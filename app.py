@@ -1,6 +1,12 @@
 import streamlit as st
 from scheduler import is_conflict
-from agent import get_response
+def get_response(user_input):
+    return f"""
+    📅 Suggestion:
+    - Try scheduling '{user_input}' in your free time
+    - Avoid overlapping with existing events
+    - Keep buffer time between tasks
+    """
 from datetime import datetime
 
 st.title("📅 Smart Timetable Assistant AI")
