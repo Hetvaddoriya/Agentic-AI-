@@ -1,4 +1,4 @@
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
 
 def get_response(user_input):
     llm = ChatOpenAI(temperature=0)
