@@ -153,10 +153,25 @@ for event in events:
     st.write(f"📌 {event['summary']} - {event['start']['dateTime']}")
 
 # ---- AI ASSISTANT ----
-st.header("AI Assistant")
+st.header("🕒 Find Free Time")
 
-user_input = st.text_input("Ask anything (e.g., find free time)")
+if st.button("Find Free Slots"):
+    try:
+        events = get_events()
+    except:
+        events = []
 
-if st.button("Ask AI"):
-    response = get_response(user_input)
-    st.write(response)
+    free_slots = []
+
+    if len(events) > 1:
+        for i in range(len(events) - 1):
+            end = events[i]['end']['dateTime']
+            start = events[i+1]['start']['dateTime']
+
+            free_slots.append((end, start))
+
+    if free_slots:
+        for slot in free_slots:
+            st.write(f"🟢 Free: {slot[0]} → {slot[1]}")
+    else:
+        st.write("No free slots found")
