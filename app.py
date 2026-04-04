@@ -10,21 +10,26 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # -------- AUTH --------
 def authenticate_google():
-    creds = None
+    import streamlit as st
 
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+def authenticate_google():
+    creds_dict = {
+        "installed": {
+            "client_id": st.secrets["google"]["client_id"],
+            "project_id": st.secrets["google"]["project_id"],
+            "auth_uri": st.secrets["google"]["auth_uri"],
+            "token_uri": st.secrets["google"]["token_uri"],
+            "auth_provider_x509_cert_url": st.secrets["google"]["auth_provider_x509_cert_url"],
+            "client_secret": st.secrets["google"]["client_secret"],
+            "redirect_uris": st.secrets["google"]["redirect_uris"]
+        }
+    }
 
-    if not creds:
-        flow = InstalledAppFlow.from_client_config(creds_dict, SCOPES)
-        creds = flow.run_local_server(port=0)
-
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
+    flow = InstalledAppFlow.from_client_config(creds_dict, SCOPES)
+    creds = flow.run_local_server(port=0)
 
     service = build('calendar', 'v3', credentials=creds)
     return service
-
 
 # -------- GET EVENTS --------
 def get_events():
