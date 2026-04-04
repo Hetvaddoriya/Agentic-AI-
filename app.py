@@ -98,7 +98,26 @@ start = st.datetime_input("Start Time")
 end = st.datetime_input("End Time")
 
 if st.button("Add Event"):
-try:
+    try:
+        events = get_events()
+    except:
+        events = []
+        st.warning("⚠️ Calendar not available in cloud")
+
+    conflict = is_conflict(
+        events,
+        start.isoformat(),
+        end.isoformat()
+    )
+
+    if conflict:
+        st.error("⚠️ Conflict detected! Choose another time.")
+    else:
+        try:
+            link = create_event(title, start.isoformat(), end.isoformat())
+            st.success(f"✅ Event Created: {link}")
+        except:
+            st.error("❌ Cannot create event in cloud")
 events = get_events()
 except:
 events = []
