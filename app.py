@@ -98,7 +98,11 @@ start = st.datetime_input("Start Time")
 end = st.datetime_input("End Time")
 
 if st.button("Add Event"):
+    try:
     events = get_events()
+except:
+    events = []
+    st.warning("⚠️ Calendar not available in cloud")
 
     conflict = is_conflict(
         events,
@@ -115,7 +119,11 @@ if st.button("Add Event"):
 # ---- VIEW EVENTS ----
 st.header("Upcoming Events")
 
-events = get_events()
+try:
+    events = get_events()
+except:
+    events = []
+    st.warning("⚠️ Cannot fetch events in cloud")
 for event in events:
     st.write(f"📌 {event['summary']} - {event['start']['dateTime']}")
 
