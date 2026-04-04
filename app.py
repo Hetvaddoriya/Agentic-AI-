@@ -1,3 +1,4 @@
+import streamlit as st
 from datetime import datetime
 import os.path
 
@@ -9,10 +10,9 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 
 # -------- AUTH --------
-def authenticate_google():
-    import streamlit as st
 
-def authenticate_google():
+ def authenticate_google():
+ import streamlit as st
     creds_dict = {
         "installed": {
             "client_id": st.secrets["google"]["client_id"],
@@ -78,7 +78,6 @@ def is_conflict(events, new_start, new_end):
 
     return False
 import streamlit as st
-from scheduler import is_conflict
 def get_response(user_input):
     return f"""
     📅 Suggestion:
@@ -98,10 +97,11 @@ start = st.datetime_input("Start Time")
 end = st.datetime_input("End Time")
 
 if st.button("Add Event"):
-    try:
-    events = get_events()
+try:
+events = get_events()
 except:
-    events = []
+events = []
+st.warning("⚠️ Calendar not available in cloud")
     st.warning("⚠️ Calendar not available in cloud")
 
     conflict = is_conflict(
@@ -113,8 +113,11 @@ except:
     if conflict:
         st.error("⚠️ Conflict detected! Choose another time.")
     else:
-        link = create_event(title, start.isoformat(), end.isoformat())
-        st.success(f"✅ Event Created: {link}")
+    try:
+    link = create_event(title, start.isoformat(), end.isoformat())
+    st.success(f"✅ Event Created: {link}")
+     except:
+     st.error("❌ Cannot create event in cloud")
 
 # ---- VIEW EVENTS ----
 st.header("Upcoming Events")
