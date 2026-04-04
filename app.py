@@ -135,11 +135,11 @@ except:
     if conflict:
         st.error("⚠️ Conflict detected! Choose another time.")
     else:
-    try:
-    link = create_event(title, start.isoformat(), end.isoformat())
-    st.success(f"✅ Event Created: {link}")
-     except:
-     st.error("❌ Cannot create event in cloud")
+        try:
+            link = create_event(title, start.isoformat(), end.isoformat())
+            st.success(f"✅ Event Created: {link}")
+        except:
+            st.error("❌ Cannot create event in cloud")
 
 # ---- VIEW EVENTS ----
 st.header("Upcoming Events")
