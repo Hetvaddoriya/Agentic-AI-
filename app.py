@@ -11,7 +11,7 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # -------- AUTH --------
 
- def authenticate_google():
+def authenticate_google():
  import streamlit as st
     creds_dict = {
         "installed": {
