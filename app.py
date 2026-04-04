@@ -122,8 +122,8 @@ events = get_events()
 try:
     something()
 except:
-events = []
-st.warning("⚠️ Calendar not available in cloud")
+    events = []
+    st.warning("⚠️ Calendar not available in cloud")
     st.warning("⚠️ Calendar not available in cloud")
 
     conflict = is_conflict(
