@@ -1,177 +1,88 @@
 import streamlit as st
-from datetime import datetime
-import os.path
 
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(page_title="Smart Timetable AI", layout="wide")
 
-SCOPES = ['https://www.googleapis.com/auth/calendar']
+# ---------------- TITLE ----------------
+st.markdown("""
+# 📅 Smart Timetable Assistant AI
+### 🚀 AI-powered Smart Scheduling for Students
+---
+""")
 
+# ---------------- STORAGE ----------------
+if "events" not in st.session_state:
+    st.session_state.events = []
 
-# -------- AUTH --------
+# ---------------- ADD EVENT ----------------
+st.header("➕ Add Event")
 
-def authenticate_google():
-    import streamlit as st
+col1, col2 = st.columns(2)
 
-    creds_dict = {
-        "installed": {
-            "client_id": st.secrets["google"]["client_id"],
-            "project_id": st.secrets["google"]["project_id"],
-            "auth_uri": st.secrets["google"]["auth_uri"],
-            "token_uri": st.secrets["google"]["token_uri"],
-            "auth_provider_x509_cert_url": st.secrets["google"]["auth_provider_x509_cert_url"],
-            "client_secret": st.secrets["google"]["client_secret"],
-            "redirect_uris": st.secrets["google"]["redirect_uris"]
-        }
+with col1:
+    title = st.text_input("📌 Event Title")
+
+with col2:
+    start = st.time_input("⏰ Start Time")
+
+end = st.time_input("⏳ End Time")
+
+if st.button("🚀 Create Event"):
+    new_event = {
+        "title": title,
+        "start": start,
+        "end": end
     }
 
-    flow = InstalledAppFlow.from_client_config(creds_dict, SCOPES)
-    creds = flow.run_local_server(port=0)
-
-    service = build('calendar', 'v3', credentials=creds)
-    return service
-
-# -------- GET EVENTS --------
-def get_events():
-    service = authenticate_google()
-
-    now = datetime.utcnow().isoformat() + 'Z'
-
-    events_result = service.events().list(
-        calendarId='primary',
-        timeMin=now,
-        maxResults=10,
-        singleEvents=True,
-        orderBy='startTime'
-    ).execute()
-
-    return events_result.get('items', [])
-
-
-# -------- CREATE EVENT --------
-def create_event(summary, start_time, end_time):
-    service = authenticate_google()
-
-    event = {
-        'summary': summary,
-        'start': {'dateTime': start_time, 'timeZone': 'Asia/Kolkata'},
-        'end': {'dateTime': end_time, 'timeZone': 'Asia/Kolkata'},
-    }
-
-    event = service.events().insert(
-        calendarId='primary', body=event).execute()
-
-    return event.get('htmlLink')
-
-
-# -------- CONFLICT CHECK --------
-def is_conflict(events, new_start, new_end):
-    new_start = datetime.fromisoformat(new_start)
-    new_end = datetime.fromisoformat(new_end)
-
-    for event in events:
-        start = datetime.fromisoformat(event['start']['dateTime'])
-        end = datetime.fromisoformat(event['end']['dateTime'])
-
-        if (new_start < end and new_end > start):
-            return True
-
-    return False
-import streamlit as st
-def get_response(user_input):
-    return f"""
-    📅 Suggestion:
-    - Try scheduling '{user_input}' in your free time
-    - Avoid overlapping with existing events
-    - Keep buffer time between tasks
-    """
-from datetime import datetime
-
-st.title("📅 Smart Timetable Assistant AI")
-
-# ---- ADD EVENT ----
-st.header("Add Event")
-
-title = st.text_input("Event Title")
-start = st.datetime_input("Start Time")
-end = st.datetime_input("End Time")
-
-if st.button("Add Event"):
-    try:
-        events = get_events()
-    except:
-        events = []
-        st.warning("⚠️ Calendar not available in cloud")
-
-    conflict = is_conflict(
-        events,
-        start.isoformat(),
-        end.isoformat()
-    )
+    conflict = False
+    for event in st.session_state.events:
+        if (start < event["end"] and end > event["start"]):
+            conflict = True
+            break
 
     if conflict:
         st.error("⚠️ Conflict detected! Choose another time.")
     else:
-        try:
-            link = create_event(title, start.isoformat(), end.isoformat())
-            st.success(f"✅ Event Created: {link}")
-        except:
-            st.error("❌ Cannot create event in cloud")
-events = get_events()
-try:
-    something()
-except:
-    events = []
-    st.warning("⚠️ Calendar not available in cloud")
-    st.warning("⚠️ Calendar not available in cloud")
+        st.session_state.events.append(new_event)
+        st.success("✅ Event added successfully!")
+        st.balloons()
 
-    conflict = is_conflict(
-        events,
-        start.isoformat(),
-        end.isoformat()
-    )
+# ---------------- VIEW EVENTS ----------------
+st.header("📅 Your Schedule")
 
-    if conflict:
-        st.error("⚠️ Conflict detected! Choose another time.")
-    else:
-        try:
-            link = create_event(title, start.isoformat(), end.isoformat())
-            st.success(f"✅ Event Created: {link}")
-        except:
-            st.error("❌ Cannot create event in cloud")
+if st.session_state.events:
+    for event in st.session_state.events:
+        st.markdown(f"""
+        ### 📌 {event['title']}
+        🕒 {event['start']} → {event['end']}
+        ---
+        """)
+else:
+    st.write("No events added yet")
 
-# ---- VIEW EVENTS ----
-st.header("Upcoming Events")
-
-try:
-    events = get_events()
-except:
-    events = []
-    st.warning("⚠️ Cannot fetch events in cloud")
-for event in events:
-    st.write(f"📌 {event['summary']} - {event['start']['dateTime']}")
-
-# ---- AI ASSISTANT ----
+# ---------------- FREE TIME FINDER ----------------
 st.header("🕒 Find Free Time")
 
 if st.button("Find Free Slots"):
-    try:
-        events = get_events()
-    except:
-        events = []
+    events = sorted(st.session_state.events, key=lambda x: x["start"])
 
-    free_slots = []
-
-    if len(events) > 1:
-        for i in range(len(events) - 1):
-            end = events[i]['end']['dateTime']
-            start = events[i+1]['start']['dateTime']
-
-            free_slots.append((end, start))
-
-    if free_slots:
-        for slot in free_slots:
-            st.write(f"🟢 Free: {slot[0]} → {slot[1]}")
+    if len(events) < 2:
+        st.write("Not enough events to find free time")
     else:
-        st.write("No free slots found")
+        for i in range(len(events) - 1):
+            st.write(f"🟢 Free: {events[i]['end']} → {events[i+1]['start']}")
+
+# ---------------- AI ASSISTANT ----------------
+st.header("🤖 AI Smart Assistant")
+
+user_input = st.text_input("Ask something (e.g., Plan my study time)")
+
+if st.button("Ask AI"):
+    if user_input:
+        st.success(f"💡 Suggestion: Try scheduling '{user_input}' in your free time with proper breaks.")
+
+# ---------------- FOOTER ----------------
+st.markdown("""
+---
+✨ Built with ❤️ for Hackathon
+""")
