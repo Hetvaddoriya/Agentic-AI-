@@ -19,12 +19,81 @@ background:linear-gradient(90deg,#667eea,#764ba2);color:white'>
 
 # ---------------- SIDEBAR ----------------
 menu = st.sidebar.radio("📌 Menu",
-    ["Dashboard", "➕ Add Event", "📅 Calendar", "🕒 Free Time", "🔔 Reminders", "🤖 AI"])
-
+    ["Dashboard", "➕ Add Event", "📅 Calendar", "🕒 Free Time", "🔔 Reminders", "🗑️ Manage Events", "✏️ Edit Event", "🤖 AI"])
 # ---------------- STORAGE ----------------
 if "events" not in st.session_state:
     st.session_state.events = []
+# ---------------- MANAGE EVENTS ----------------
+elif menu == "🗑️ Manage Events":
+    st.subheader("🗑️ Manage Events")
 
+    events = st.session_state.events
+
+    if not events:
+        st.info("No events available")
+    else:
+        for i, e in enumerate(events):
+            col1, col2 = st.columns([4,1])
+
+            with col1:
+                st.write(
+                    f"📌 {e['title']} | "
+                    f"{e['start'].strftime('%d %b %H:%M')} → "
+                    f"{e['end'].strftime('%d %b %H:%M')}"
+                )
+
+            with col2:
+                if st.button("❌ Delete", key=f"del_{i}"):
+                    st.session_state.events.pop(i)
+                    st.success("Event deleted")
+                    st.rerun()
+                    # ---------------- EDIT EVENT ----------------
+elif menu == "✏️ Edit Event":
+    st.subheader("✏️ Edit Event")
+
+    events = st.session_state.events
+
+    if not events:
+        st.info("No events available to edit")
+    else:
+        # Select event
+        event_titles = [f"{i} - {e['title']}" for i, e in enumerate(events)]
+        selected = st.selectbox("Select Event", event_titles)
+
+        index = int(selected.split(" - ")[0])
+        event = events[index]
+
+        # Pre-filled inputs
+        new_title = st.text_input("Title", value=event["title"])
+        new_start = st.datetime_input("Start Time", value=event["start"])
+        new_end = st.datetime_input("End Time", value=event["end"])
+
+        reminder_enabled = st.checkbox(
+            "Enable Reminder",
+            value=True if event["reminder"] else False
+        )
+
+        if reminder_enabled:
+            new_reminder = st.datetime_input(
+                "Reminder Time",
+                value=event["reminder"] if event["reminder"] else datetime.now()
+            )
+        else:
+            new_reminder = None
+
+        if st.button("💾 Save Changes"):
+            if new_start >= new_end:
+                st.error("End time must be greater than start time")
+            else:
+                st.session_state.events[index] = {
+                    "title": new_title,
+                    "start": new_start,
+                    "end": new_end,
+                    "reminder": new_reminder
+                }
+
+                st.success("✅ Event updated successfully")
+                st.rerun()
 # ---------------- AI FUNCTION ----------------
 def ai_response(user_input, events):
     try:
