@@ -10,30 +10,16 @@ import pandas as pd
 st.set_page_config(page_title="Smart Timetable AI", layout="wide")
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-# ---------------- ANIMATED UI STYLE ----------------
+# ---------------- STYLE ----------------
 st.markdown("""
 <style>
 .block-container {padding-top: 1rem;}
-
-.card {
-    padding: 20px;
-    border-radius: 15px;
-    background: #ffffff;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
-    transition: 0.3s;
-}
-.card:hover {
-    transform: scale(1.03);
-    box-shadow: 0px 6px 20px rgba(0,0,0,0.2);
-}
-
-.stButton>button {
+.stMetric {
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    padding: 15px;
     border-radius: 12px;
-    background: linear-gradient(90deg,#667eea,#764ba2);
     color: white;
-    font-weight: bold;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -48,11 +34,14 @@ background:linear-gradient(90deg,#667eea,#764ba2);color:white'>
 
 # ---------------- SIDEBAR ----------------
 menu = st.sidebar.radio("📌 Menu",
-    ["Dashboard", "➕ Add Event", "📅 Calendar", "🕒 Free Time", "🔔 Reminders", "🤖 AI"])
+    ["Dashboard", "➕ Add Event", "📅 Calendar", "🕒 Free Time", "🔔 Reminders", "🎯 Goals", "🤖 AI"])
 
 # ---------------- STORAGE ----------------
 if "events" not in st.session_state:
     st.session_state.events = []
+
+if "goals" not in st.session_state:
+    st.session_state.goals = []
 
 # ---------------- AI ----------------
 def ai_response(user_input, events):
@@ -71,27 +60,47 @@ def ai_response(user_input, events):
 
 # ---------------- DASHBOARD ----------------
 if menu == "Dashboard":
-    st.subheader("📊 Overview")
+    st.subheader("📊 Smart Dashboard")
 
-    total_events = len(st.session_state.events)
+    events = st.session_state.events
 
-    col1, col2 = st.columns(2)
+    total = len(events)
+    upcoming = sum(1 for e in events if e["start"] > datetime.now())
 
-    with col1:
-        st.markdown(f"<div class='card'><h3>Total Events</h3><h1>{total_events}</h1></div>", unsafe_allow_html=True)
+    total_hours = sum(
+        (e["end"] - e["start"]).total_seconds() / 3600
+        for e in events
+    )
 
-    with col2:
-        upcoming = sum(1 for e in st.session_state.events if e["start"] > datetime.now())
-        st.markdown(f"<div class='card'><h3>Upcoming Events</h3><h1>{upcoming}</h1></div>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("📅 Total Events", total)
+    col2.metric("⏳ Upcoming", upcoming)
+    col3.metric("🔥 Busy Hours", round(total_hours, 2))
 
-    # 📊 Chart
-    if st.session_state.events:
-        df = pd.DataFrame(st.session_state.events)
+    st.progress(min(total_hours / 24, 1.0))
+    st.write(f"🕒 Day Utilization: {round(total_hours, 2)} hrs")
+
+    # Chart
+    if events:
+        df = pd.DataFrame(events)
         df["date"] = df["start"].dt.date
         chart_data = df.groupby("date").size()
 
-        st.subheader("📈 Events per Day")
-        st.line_chart(chart_data)
+        st.markdown("### 📈 Events per Day")
+        st.bar_chart(chart_data)
+
+    else:
+        st.info("No events")
+
+    # Goals summary
+    if st.session_state.goals:
+        st.markdown("### 🎯 Goals Progress")
+        for goal in st.session_state.goals:
+            progress = total_hours
+            percent = min(progress / goal["target"], 1.0)
+
+            st.progress(percent)
+            st.write(f"{goal['title']} → {round(percent*100)}%")
 
 # ---------------- ADD EVENT ----------------
 elif menu == "➕ Add Event":
@@ -110,14 +119,17 @@ elif menu == "➕ Add Event":
     email = st.text_input("Email")
 
     if st.button("🚀 Add Event"):
-        st.session_state.events.append({
-            "title": title,
-            "start": start,
-            "end": end,
-            "reminder": reminder,
-            "email": email
-        })
-        st.success("Event added")
+        if start >= end:
+            st.error("End time must be greater than start time")
+        else:
+            st.session_state.events.append({
+                "title": title,
+                "start": start,
+                "end": end,
+                "reminder": reminder,
+                "email": email
+            })
+            st.success("Event added")
 
 # ---------------- CALENDAR ----------------
 elif menu == "📅 Calendar":
@@ -156,16 +168,45 @@ elif menu == "🕒 Free Time":
         else:
             st.warning("No free time")
 
-# ---------------- REMINDER ----------------
+# ---------------- REMINDERS ----------------
 elif menu == "🔔 Reminders":
     st.subheader("🔔 Alerts")
 
     now = datetime.now()
 
     for e in st.session_state.events:
-        if now >= e["reminder"] and now < e["start"]:
+        if e["reminder"] and now >= e["reminder"] and now < e["start"]:
             st.warning(f"Reminder: {e['title']}")
             st.audio("https://www.soundjay.com/buttons/beep-07.wav")
+
+# ---------------- GOALS ----------------
+elif menu == "🎯 Goals":
+    st.subheader("🎯 Goal Tracker")
+
+    goal_title = st.text_input("Goal Title")
+    goal_target = st.number_input("Target Hours", min_value=1)
+
+    if st.button("➕ Add Goal"):
+        st.session_state.goals.append({
+            "title": goal_title,
+            "target": goal_target
+        })
+        st.success("Goal added")
+
+    total_hours = sum(
+        (e["end"] - e["start"]).total_seconds() / 3600
+        for e in st.session_state.events
+    )
+
+    for goal in st.session_state.goals:
+        st.markdown(f"### {goal['title']}")
+        percent = min(total_hours / goal["target"], 1.0)
+
+        st.progress(percent)
+        st.write(f"{round(total_hours,1)} / {goal['target']} hrs")
+
+        if percent >= 1:
+            st.success("✅ Goal Achieved!")
 
 # ---------------- AI ----------------
 elif menu == "🤖 AI":
