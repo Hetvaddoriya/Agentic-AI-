@@ -95,13 +95,46 @@ elif menu == "📅 Calendar":
 
 # ---------------- FREE TIME ----------------
 elif menu == "🕒 Free Time":
-    st.subheader("🕒 Free Time")
+    st.subheader("🕒 Free Time Finder")
 
     if st.button("Find Free Time"):
+
         events = sorted(st.session_state.events, key=lambda x: x["start"])
-        for i in range(len(events)-1):
-            if events[i]["end"] < events[i+1]["start"]:
-                st.success(f"{events[i]['end']} → {events[i+1]['start']}")
+
+        if not events:
+            st.info("🟢 You are free all day!")
+        
+        elif len(events) == 1:
+            st.info("Only one event found.")
+
+            st.success(f"🟢 Free before: 00:00 → {events[0]['start'].strftime('%H:%M')}")
+            st.success(f"🟢 Free after: {events[0]['end'].strftime('%H:%M')} → 23:59")
+
+        else:
+            found = False
+
+            # ---- Before first event ----
+            st.markdown("### Available Slots")
+
+            if events[0]["start"].hour > 0:
+                st.success(f"🟢 00:00 → {events[0]['start'].strftime('%H:%M')}")
+                found = True
+
+            # ---- Between events ----
+            for i in range(len(events) - 1):
+                if events[i]["end"] < events[i+1]["start"]:
+                    st.success(
+                        f"🟢 {events[i]['end'].strftime('%H:%M')} → {events[i+1]['start'].strftime('%H:%M')}"
+                    )
+                    found = True
+
+            # ---- After last event ----
+            if events[-1]["end"].hour < 23:
+                st.success(f"🟢 {events[-1]['end'].strftime('%H:%M')} → 23:59")
+                found = True
+
+            if not found:
+                st.warning("⚠️ No free time available")
 
 # ---------------- REMINDERS ----------------
 elif menu == "🔔 Reminders":
