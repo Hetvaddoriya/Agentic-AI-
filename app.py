@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import time
+from datetime import datetime, timedelta
 from groq import Groq
 
 
@@ -51,9 +51,8 @@ If it's a study plan, include time slots.
 st.header("➕ Add Event")
 
 title = st.text_input("Event Title")
-start = st.time_input("Start Time")
-end = st.time_input("End Time")
-
+start = st.datetime_input("Start Date & Time")
+end = st.datetime_input("End Date & Time")
 if st.button("🚀 Create Event"):
     if start >= end:
         st.error("⚠️ End time must be greater than Start time")
@@ -86,15 +85,24 @@ if st.button("🚀 Create Event"):
             st.session_state.events.append(new_event)
             st.success("✅ Event added successfully")
 # ---------------- VIEW EVENTS ----------------
-st.header("📅 Schedule")
+st.header("📅 Schedule (Calendar View)")
 
-if st.session_state.events:
-    for e in st.session_state.events:
-        st.write(f"📌 {e['title']} | {e['start']} → {e['end']}")
-else:
-    st.write("No events")
+from streamlit_calendar import calendar
+
+calendar_events = []
+
+for e in st.session_state.events:
+    calendar_events.append({
+        "title": e["title"],
+        "start": e["start"].isoformat(),
+        "end": e["end"].isoformat(),
+    })
+
+calendar(events=calendar_events)
 
 # ---------------- FREE TIME ----------------
+from datetime import datetime, timedelta
+
 st.header("🕒 Free Time Finder")
 
 if st.button("Find Free Time"):
@@ -102,24 +110,42 @@ if st.button("Find Free Time"):
 
     if not events:
         st.write("🟢 Full day is free!")
+    
     else:
         found = False
 
-        if events[0]["start"] > time(0, 0):
-            st.write(f"🟢 Free: 00:00 → {events[0]['start']}")
+        # ✅ 👉 ADD HERE
+        start_day = datetime.combine(events[0]["start"].date(), datetime.min.time())
+        end_day = datetime.combine(events[-1]["end"].date(), datetime.max.time())
+
+        # ---- Before first event ----
+        if start_day < events[0]["start"]:
+            st.write(f"🟢 Free: {start_day} → {events[0]['start']}")
             found = True
 
+        # ---- Between events ----
         for i in range(len(events) - 1):
             if events[i]["end"] < events[i+1]["start"]:
                 st.write(f"🟢 Free: {events[i]['end']} → {events[i+1]['start']}")
                 found = True
 
-        if events[-1]["end"] < time(23, 59):
-            st.write(f"🟢 Free: {events[-1]['end']} → 23:59")
+        # ---- After last event ----
+        if events[-1]["end"] < end_day:
+            st.write(f"🟢 Free: {events[-1]['end']} → {end_day}")
             found = True
 
-        if not found:
-            st.write("⚠️ No free time available")
+        if not free_slots:
+            st.error("⚠️ No free time available")
+        else:
+            # show all
+            for s, e in free_slots:
+                st.write(f"🟢 {s.strftime('%H:%M')} → {e.strftime('%H:%M')}")
+
+            # 🔥 highlight best slot
+            best = max(free_slots, key=lambda x: x[1] - x[0])
+            st.success(
+                f"⭐ Best Slot: {best[0].strftime('%H:%M')} → {best[1].strftime('%H:%M')}"
+            )
 
 # ---------------- AI ASSISTANT ----------------
 st.header("🤖 Smart Assistant")
@@ -132,6 +158,12 @@ if st.button("Ask AI"):
     else:
         with st.spinner("Thinking..."):
             response = ai_response(user_input, st.session_state.events)
+        st.success(response)
+        if st.button("⚡ Auto Generate Study Plan"):
+    if not st.session_state.events:
+        st.warning("Add some events first")
+    else:
+        response = ai_response("Create a full study timetable from my free time", st.session_state.events)
         st.success(response)
 
 # ---------------- FOOTER ----------------
