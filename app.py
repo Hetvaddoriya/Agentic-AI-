@@ -31,18 +31,40 @@ User schedule:
 User request:
 {user_input}
 
-Create a helpful response and study plan with time slots.
+Create a helpful response and study plan with proper time slots.
 """
 
-        API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
+        API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
         headers = {
-            "Authorization": f"Bearer {st.secrets['HF_API_KEY']}"
+            "Authorization": f"Bearer {st.secrets.get('HF_API_KEY', '')}"
         }
 
-        response = requests.post(API_URL, headers=headers, json={"inputs": prompt})
-        result = response.json()
+        response = requests.post(
+            API_URL,
+            headers=headers,
+            json={"inputs": prompt},
+            timeout=20
+        )
 
-        return result[0]["generated_text"]
+        # ✅ Check HTTP error
+        if response.status_code != 200:
+            return f"❌ API Error {response.status_code}: {response.text}"
+
+        # ✅ Safe JSON parse
+        try:
+            result = response.json()
+        except:
+            return "⚠️ AI returned invalid response. Try again."
+
+        # ✅ Handle loading / empty
+        if isinstance(result, dict) and "error" in result:
+            return f"⚠️ {result['error']}"
+
+        if not result:
+            return "⚠️ No response from AI. Try again."
+
+        # ✅ Final output
+        return result[0].get("generated_text", "⚠️ No text generated")
 
     except Exception as e:
         return f"❌ AI Error: {e}"
