@@ -45,7 +45,7 @@ Create a helpful response and study plan with time slots.
         return result[0]["generated_text"]
 
     except Exception as e:
-        return f"❌ AI Error: {e}""
+        return f"❌ AI Error: {e}"
 
 # ---------------- ADD EVENT ----------------
 st.header("➕ Add Event")
