@@ -130,7 +130,12 @@ elif menu == "➕ Add Event":
                 "email": email
             })
             st.success("Event added")
+reminder_enabled = st.checkbox("Enable Reminder")
 
+if reminder_enabled:
+    reminder = st.datetime_input("⏰ Reminder Time")
+else:
+    reminder = None
 # ---------------- CALENDAR ----------------
 elif menu == "📅 Calendar":
     st.subheader("📅 Calendar")
@@ -170,15 +175,28 @@ elif menu == "🕒 Free Time":
 
 # ---------------- REMINDERS ----------------
 elif menu == "🔔 Reminders":
-    st.subheader("🔔 Alerts")
+    st.subheader("🔔 Alerts & Reminders")
 
     now = datetime.now()
+    events = st.session_state.events
 
-    for e in st.session_state.events:
-        if e["reminder"] and now >= e["reminder"] and now < e["start"]:
-            st.warning(f"Reminder: {e['title']}")
-            st.audio("https://www.soundjay.com/buttons/beep-07.wav")
+    if not events:
+        st.info("No reminders set")
+    else:
+        for e in events:
 
+            # ---- SHOW UPCOMING ----
+            if e["reminder"]:
+                st.info(
+                    f"📌 {e['title']} → Reminder at {e['reminder'].strftime('%d %b %H:%M')}"
+                )
+
+            # ---- TRIGGER ALERT ----
+            if e["reminder"] and now >= e["reminder"] and now < e["start"]:
+                st.warning(f"⏰ Reminder: {e['title']} starting soon!")
+
+                # 🔊 SOUND
+                st.audio("https://www.soundjay.com/buttons/beep-07.wav")
 # ---------------- GOALS ----------------
 elif menu == "🎯 Goals":
     st.subheader("🎯 Goal Tracker")
