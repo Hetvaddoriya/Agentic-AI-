@@ -148,10 +148,12 @@ if st.button("Find Free Time"):
             )
 
 # ---------------- AI ASSISTANT ----------------
+# ---------------- AI ASSISTANT ----------------
 st.header("🤖 Smart Assistant")
 
 user_input = st.text_input("Ask something (e.g., create study plan)")
 
+# 👉 Ask AI Button
 if st.button("Ask AI"):
     if not user_input:
         st.warning("Please enter a question")
@@ -159,14 +161,17 @@ if st.button("Ask AI"):
         with st.spinner("Thinking..."):
             response = ai_response(user_input, st.session_state.events)
         st.success(response)
-        if st.button("⚡ Auto Generate Study Plan"):
+
+# 👉 Auto Generate Button (SEPARATE BUTTON)
+if st.button("⚡ Auto Generate Study Plan"):
     if not st.session_state.events:
         st.warning("Add some events first")
     else:
-        response = ai_response(
-            "Create a full study timetable from my free time",
-            st.session_state.events
-        )
+        with st.spinner("Generating timetable..."):
+            response = ai_response(
+                "Create a full study timetable from my free time",
+                st.session_state.events
+            )
         st.success(response)
 # ---------------- FOOTER ----------------
 st.markdown("---")
