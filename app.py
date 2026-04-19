@@ -8,7 +8,7 @@ api_key = st.secrets.get("GEMINI_API_KEY")
 
 if api_key:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-1.5-flash-latest")
 else:
     model = None
 
@@ -19,7 +19,7 @@ USE_GOOGLE = os.getenv("USE_GOOGLE", "false") == "true"
 
 # ---------------- GEMINI SETUP ----------------
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-1.5-flash-latest")
 
 # ---------------- UI HEADER ----------------
 st.markdown("""
