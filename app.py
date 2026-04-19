@@ -1,10 +1,12 @@
 import streamlit as st
 from datetime import time
-import requests
+from groq import Groq
+
+
 
 # ---------------- CONFIG ----------------
 st.set_page_config(page_title="Smart Timetable AI", layout="wide")
-
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 # ---------------- UI HEADER ----------------
 st.markdown("""
 # 📅 Smart Timetable Assistant AI
@@ -24,54 +26,27 @@ def ai_response(user_input, events):
         ) if events else "No events"
 
         prompt = f"""
+You are a smart timetable assistant.
+
 User schedule:
 {schedule_text}
 
 User request:
 {user_input}
 
-Create a helpful response and study plan with proper time slots.
+Give a clear, helpful answer.
+If it's a study plan, include time slots.
 """
 
-        API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
-        headers = {
-            "Authorization": f"Bearer {st.secrets.get('HF_API_KEY', '')}"
-        }
+        chat = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama3-8b-8192"
+        )
 
-        response = requests.post(
-    API_URL,
-    headers=headers,
-    json={
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 200
-        }
-    }
-)
-        # ✅ Check HTTP error
-        if response.status_code != 200:
-            return f"❌ API Error {response.status_code}: {response.text}"
-
-        # ✅ Safe JSON parse
-        try:
-            result = response.json()
-        except:
-            return "⚠️ AI returned invalid response. Try again."
-
-        # ✅ Handle loading / empty
-        if isinstance(result, dict) and "error" in result:
-            return f"⚠️ {result['error']}"
-
-        if not result:
-            return "⚠️ No response from AI. Try again."
-
-        # ✅ Final output
-        return result[0].get("generated_text", "⚠️ No text generated")
+        return chat.choices[0].message.content
 
     except Exception as e:
-        return f"❌ AI Error: {e}"
-
-# ---------------- ADD EVENT ----------------
+        return f"❌ AI Error: {e}"# ---------------- ADD EVENT ----------------
 st.header("➕ Add Event")
 
 title = st.text_input("Event Title")
