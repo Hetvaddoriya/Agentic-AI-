@@ -1,3 +1,7 @@
+from openai import OpenAI
+import streamlit as st
+
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 import streamlit as st
 from datetime import datetime, time
 
@@ -12,8 +16,39 @@ st.markdown("""
 """)
 
 # ---------------- LOCAL STORAGE ----------------
+# ---------------- LOCAL STORAGE ----------------
 if "events" not in st.session_state:
     st.session_state.events = []
+
+# ✅ 👉 ADD YOUR FUNCTION HERE
+def ai_response(user_input, events):
+    try:
+        schedule_text = "\n".join(
+            [f"{e['title']} ({e['start']} - {e['end']})" for e in events]
+        ) if events else "No events"
+
+        prompt = f"""
+You are a smart timetable assistant.
+
+User schedule:
+{schedule_text}
+
+User request:
+{user_input}
+
+Give a clear, helpful answer.
+If user asks for study plan, suggest specific time slots.
+"""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        return response.choices[0].message.content
+
+    except Exception as e:
+        return f"Error: {e}"
 
 # ---------------- SMART AI ----------------
 def smart_response(user_input, events):
@@ -107,7 +142,7 @@ user_input = st.text_input("Ask something (e.g., when am I free?)")
 
 if st.button("Ask AI"):
     if user_input:
-        response = smart_response(user_input, st.session_state.events)
+        response = ai_response(user_input, st.session_state.events)
         st.success(response)
 
 # ---------------- FOOTER ----------------
