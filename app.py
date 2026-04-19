@@ -40,7 +40,7 @@ If it's a study plan, include time slots.
 
         chat = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="llama3-8b-8192"
+           model="llama3-70b-8192"
         )
 
         return chat.choices[0].message.content
