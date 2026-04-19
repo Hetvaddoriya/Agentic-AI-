@@ -52,14 +52,10 @@ if USE_GOOGLE:
         service.events().insert(calendarId='primary', body=event).execute()
 
 # ---------------- ADD EVENT ----------------
-st.header("➕ Add Event")
-
-title = st.text_input("Event Title")
-start = st.time_input("Start Time")
-end = st.time_input("End Time")
 if st.button("🚀 Create Event"):
     if start >= end:
         st.error("⚠️ End time must be greater than Start time")
+
     else:
         new_event = {
             "title": title,
@@ -74,11 +70,10 @@ if st.button("🚀 Create Event"):
                 break
 
         if conflict:
-            st.error("⚠️ Conflict detected!")
+            st.error("⚠️ Conflict detected! Event not added ❌")
         else:
             st.session_state.events.append(new_event)
-            st.success("✅ Event added")
-    # -------- GET EVENTS --------
+            st.success("✅ Event added successfully")    # -------- GET EVENTS --------
     if USE_GOOGLE:
         try:
             events = get_events()
