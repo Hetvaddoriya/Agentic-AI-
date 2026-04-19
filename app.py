@@ -2,6 +2,15 @@ import streamlit as st
 import os
 from datetime import datetime
 import google.generativeai as genai
+import streamlit as st
+
+api_key = st.secrets.get("GEMINI_API_KEY")
+
+if api_key:
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+else:
+    model = None
 
 # ---------------- CONFIG ----------------
 st.set_page_config(page_title="Smart Timetable AI", layout="wide")
