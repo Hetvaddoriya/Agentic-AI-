@@ -1,10 +1,11 @@
 import streamlit as st
 from datetime import time
-import requests
+from openai import OpenAI
 
 # ---------------- CONFIG ----------------
 st.set_page_config(page_title="Smart Timetable AI", layout="wide")
 
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # ---------------- UI HEADER ----------------
 st.markdown("""
@@ -25,46 +26,29 @@ def ai_response(user_input, events):
         ) if events else "No events"
 
         prompt = f"""
+You are a smart timetable assistant.
+
 User schedule:
 {schedule_text}
 
 User request:
 {user_input}
 
-Create a helpful response and study plan with proper time slots.
+Give a clear and structured answer.
+
+If user asks for a study plan:
+- Suggest exact time slots
+- Break into sessions
+- Add small breaks
+- Be practical and realistic
 """
 
-        API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
-        headers = {
-            "Authorization": f"Bearer {st.secrets.get('HF_API_KEY', '')}"
-        }
-
-        response = requests.post(
-            API_URL,
-            headers=headers,
-            json={"inputs": prompt},
-            timeout=20
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
         )
 
-        # ✅ Check HTTP error
-        if response.status_code != 200:
-            return f"❌ API Error {response.status_code}: {response.text}"
-
-        # ✅ Safe JSON parse
-        try:
-            result = response.json()
-        except:
-            return "⚠️ AI returned invalid response. Try again."
-
-        # ✅ Handle loading / empty
-        if isinstance(result, dict) and "error" in result:
-            return f"⚠️ {result['error']}"
-
-        if not result:
-            return "⚠️ No response from AI. Try again."
-
-        # ✅ Final output
-        return result[0].get("generated_text", "⚠️ No text generated")
+        return response.choices[0].message.content
 
     except Exception as e:
         return f"❌ AI Error: {e}"
