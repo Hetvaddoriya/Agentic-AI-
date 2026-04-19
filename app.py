@@ -136,21 +136,32 @@ else:
     st.write("No events")
 
 # ---------------- FREE TIME ----------------
+from datetime import time
+
 if st.button("Find Free Time"):
     events = sorted(st.session_state.events, key=lambda x: x["start"])
 
-    if len(events) < 2:
-        st.write("Not enough events")
+    if not events:
+        st.write("🟢 Full day is free!")
+    
     else:
         found = False
+
+        # Before first event
+        if events[0]["start"] > time(0, 0):
+            st.write(f"🟢 Free: 00:00 → {events[0]['start']}")
+            found = True
+
+        # Between events
         for i in range(len(events) - 1):
             if events[i]["end"] < events[i+1]["start"]:
                 st.write(f"🟢 Free: {events[i]['end']} → {events[i+1]['start']}")
                 found = True
 
-        if not found:
-            st.write("No free time available")
-
+        # After last event
+        if events[-1]["end"] < time(23, 59):
+            st.write(f"🟢 Free: {events[-1]['end']} → 23:59")
+            found = True
 # ---------------- GEMINI AI ----------------
 st.header("🤖 Smart Assistant")
 
