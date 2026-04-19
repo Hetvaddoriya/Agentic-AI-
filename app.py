@@ -164,12 +164,21 @@ st.header("🤖 AI Assistant")
 user_input = st.text_input("Ask something")
 
 if st.button("Ask AI"):
-    if user_input:
+    if not model:
+        st.error("AI not configured")
+    elif user_input:
         try:
-            response = model.generate_content(user_input)
+            prompt = f"""
+            User schedule: {st.session_state.events}
+
+            User request: {user_input}
+
+            Suggest best free time and advice.
+            """
+            response = model.generate_content(prompt)
             st.success(response.text)
-        except:
-            st.error("AI error")
+        except Exception as e:
+            st.error(f"AI Error: {e}")
 
 # ---------------- FOOTER ----------------
 st.markdown("---")
