@@ -7,42 +7,6 @@ st.set_page_config(page_title="Smart Timetable AI", layout="wide")
 
 USE_GOOGLE = os.getenv("USE_GOOGLE", "false") == "true"
 
-# ---------------- GEMINI SETUP ----------------
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-model = genai.GenerativeModel("gemini-1.5-flash")
-
-def smart_response(user_input, events):
-    user_input = user_input.lower()
-
-    if not events:
-        return "📅 You have a free schedule. Great time to plan productive tasks!"
-
-    # Free time logic
-    if "free time" in user_input or "when am i free" in user_input:
-        if len(events) < 2:
-            return "🕒 You have plenty of free time today!"
-
-        events_sorted = sorted(events, key=lambda x: x["start"])
-        free_slots = []
-
-        for i in range(len(events_sorted) - 1):
-            free_slots.append(f"{events_sorted[i]['end']} → {events_sorted[i+1]['start']}")
-
-        return "🟢 Your free slots:\n" + "\n".join(free_slots)
-
-    # Study suggestion
-    if "study" in user_input:
-        return "📚 Best study time is during long uninterrupted free slots."
-
-    # Productivity advice
-    if "plan" in user_input or "schedule" in user_input:
-        return "🧠 Try grouping similar tasks together and keep breaks between events."
-
-    # Busy schedule detection
-    if len(events) >= 5:
-        return "⚠️ You have a busy schedule. Consider adding breaks!"
-
-    return f"💡 Suggestion: Try scheduling '{user_input}' in your free time."
 # ---------------- UI HEADER ----------------
 st.markdown("""
 # 📅 Smart Timetable Assistant AI
