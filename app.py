@@ -1,121 +1,145 @@
 import streamlit as st
-from datetime import datetime, timedelta
+from datetime import datetime
 from groq import Groq
 import smtplib
 from email.mime.text import MIMEText
+from streamlit_calendar import calendar
+import pandas as pd
 
 # ---------------- CONFIG ----------------
 st.set_page_config(page_title="Smart Timetable AI", layout="wide")
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-# ---------------- UI HEADER ----------------
+# ---------------- ANIMATED UI STYLE ----------------
 st.markdown("""
-# 📅 Smart Timetable Assistant AI
-### 🚀 Smart Scheduling + AI Assistant
----
-""")
+<style>
+.block-container {padding-top: 1rem;}
 
-# ---------------- LOCAL STORAGE ----------------
+.card {
+    padding: 20px;
+    border-radius: 15px;
+    background: #ffffff;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+    transition: 0.3s;
+}
+.card:hover {
+    transform: scale(1.03);
+    box-shadow: 0px 6px 20px rgba(0,0,0,0.2);
+}
+
+.stButton>button {
+    border-radius: 12px;
+    background: linear-gradient(90deg,#667eea,#764ba2);
+    color: white;
+    font-weight: bold;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------- HEADER ----------------
+st.markdown("""
+<div style='padding:20px;border-radius:15px;
+background:linear-gradient(90deg,#667eea,#764ba2);color:white'>
+<h2>📅 Smart Timetable Dashboard</h2>
+<p>Plan • Track • Optimize your time</p>
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------- SIDEBAR ----------------
+menu = st.sidebar.radio("📌 Menu",
+    ["Dashboard", "➕ Add Event", "📅 Calendar", "🕒 Free Time", "🔔 Reminders", "🤖 AI"])
+
+# ---------------- STORAGE ----------------
 if "events" not in st.session_state:
     st.session_state.events = []
 
-# ---------------- EMAIL FUNCTION ----------------
-def send_email(subject, body, to_email):
-    try:
-        msg = MIMEText(body)
-        msg["Subject"] = subject
-        msg["From"] = st.secrets["EMAIL_USER"]
-        msg["To"] = to_email
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(st.secrets["EMAIL_USER"], st.secrets["EMAIL_PASS"])
-        server.send_message(msg)
-        server.quit()
-    except Exception as e:
-        st.error(f"Email Error: {e}")
-
-# ---------------- AI FUNCTION ----------------
+# ---------------- AI ----------------
 def ai_response(user_input, events):
     try:
         schedule_text = "\n".join(
             [f"{e['title']} ({e['start']} - {e['end']})" for e in events]
         ) if events else "No events"
 
-        prompt = f"""
-User schedule:
-{schedule_text}
-
-User request:
-{user_input}
-
-Give structured timetable or reminder advice.
-"""
-
         chat = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": f"{schedule_text}\n\n{user_input}"}],
             model="llama-3.1-8b-instant"
         )
-
         return chat.choices[0].message.content
-
     except Exception as e:
-        return f"❌ AI Error: {e}"
+        return str(e)
+
+# ---------------- DASHBOARD ----------------
+if menu == "Dashboard":
+    st.subheader("📊 Overview")
+
+    total_events = len(st.session_state.events)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"<div class='card'><h3>Total Events</h3><h1>{total_events}</h1></div>", unsafe_allow_html=True)
+
+    with col2:
+        upcoming = sum(1 for e in st.session_state.events if e["start"] > datetime.now())
+        st.markdown(f"<div class='card'><h3>Upcoming Events</h3><h1>{upcoming}</h1></div>", unsafe_allow_html=True)
+
+    # 📊 Chart
+    if st.session_state.events:
+        df = pd.DataFrame(st.session_state.events)
+        df["date"] = df["start"].dt.date
+        chart_data = df.groupby("date").size()
+
+        st.subheader("📈 Events per Day")
+        st.line_chart(chart_data)
 
 # ---------------- ADD EVENT ----------------
-st.header("➕ Add Event")
+elif menu == "➕ Add Event":
+    st.subheader("➕ Create Event")
 
-title = st.text_input("Event Title")
-start = st.datetime_input("Start Date & Time")
-end = st.datetime_input("End Date & Time")
-reminder = st.datetime_input("⏰ Reminder Time")
-email = st.text_input("📧 Email for reminder")
+    col1, col2 = st.columns(2)
 
-if st.button("🚀 Create Event"):
-    if start >= end:
-        st.error("⚠️ End time must be greater than Start time")
-    else:
-        new_event = {
+    with col1:
+        title = st.text_input("Title")
+        start = st.datetime_input("Start")
+
+    with col2:
+        end = st.datetime_input("End")
+        reminder = st.datetime_input("Reminder")
+
+    email = st.text_input("Email")
+
+    if st.button("🚀 Add Event"):
+        st.session_state.events.append({
             "title": title,
             "start": start,
             "end": end,
             "reminder": reminder,
             "email": email
-        }
-
-        for event in st.session_state.events:
-            if start == event["start"] and end == event["end"]:
-                st.warning("⚠️ Duplicate event")
-                st.stop()
-
-        st.session_state.events.append(new_event)
-        st.success("✅ Event added")
+        })
+        st.success("Event added")
 
 # ---------------- CALENDAR ----------------
-st.header("📅 Calendar View")
+elif menu == "📅 Calendar":
+    st.subheader("📅 Calendar")
 
-from streamlit_calendar import calendar
+    calendar_events = [
+        {
+            "title": e["title"],
+            "start": e["start"].isoformat(),
+            "end": e["end"].isoformat()
+        }
+        for e in st.session_state.events
+    ]
 
-calendar_events = [
-    {
-        "title": e["title"],
-        "start": e["start"].isoformat(),
-        "end": e["end"].isoformat()
-    }
-    for e in st.session_state.events
-]
-
-calendar(events=calendar_events)
+    calendar(events=calendar_events)
 
 # ---------------- FREE TIME ----------------
-st.header("🕒 Free Time Finder")
+elif menu == "🕒 Free Time":
+    st.subheader("🕒 Free Time")
 
-if st.button("Find Free Time"):
-    events = sorted(st.session_state.events, key=lambda x: x["start"])
-
-    if not events:
-        st.success("🟢 Full day free")
-    else:
+    if st.button("Find Free Time"):
+        events = sorted(st.session_state.events, key=lambda x: x["start"])
         free_slots = []
 
         for i in range(len(events)-1):
@@ -126,44 +150,33 @@ if st.button("Find Free Time"):
             best = max(free_slots, key=lambda x: x[1]-x[0])
 
             for s,e in free_slots:
-                st.write(f"🟢 {s.strftime('%H:%M')} → {e.strftime('%H:%M')}")
+                st.info(f"{s.strftime('%H:%M')} → {e.strftime('%H:%M')}")
 
             st.success(f"⭐ Best Slot: {best[0]} → {best[1]}")
         else:
-            st.error("No free slots")
+            st.warning("No free time")
 
-# ---------------- REMINDER SYSTEM ----------------
-st.header("🔔 Reminders")
+# ---------------- REMINDER ----------------
+elif menu == "🔔 Reminders":
+    st.subheader("🔔 Alerts")
 
-now = datetime.now()
+    now = datetime.now()
 
-for e in st.session_state.events:
-    if e["reminder"] and now >= e["reminder"] and now < e["start"]:
+    for e in st.session_state.events:
+        if now >= e["reminder"] and now < e["start"]:
+            st.warning(f"Reminder: {e['title']}")
+            st.audio("https://www.soundjay.com/buttons/beep-07.wav")
 
-        st.warning(f"⏰ Reminder: {e['title']} at {e['start']}")
+# ---------------- AI ----------------
+elif menu == "🤖 AI":
+    st.subheader("🤖 Smart Assistant")
 
-        # 🔊 SOUND
-        st.audio("https://www.soundjay.com/buttons/beep-07.wav")
+    user_input = st.text_input("Ask something")
 
-        # 📧 EMAIL
-        if e["email"]:
-            send_email(
-                f"Reminder: {e['title']}",
-                f"Your event starts at {e['start']}",
-                e["email"]
-            )
-
-# ---------------- AI ASSISTANT ----------------
-st.header("🤖 Smart Assistant")
-
-user_input = st.text_input("Ask something")
-
-if st.button("Ask AI"):
-    if user_input:
+    if st.button("Ask AI"):
         st.success(ai_response(user_input, st.session_state.events))
 
-if st.button("⚡ Auto Generate Study Plan"):
-    if st.session_state.events:
+    if st.button("⚡ Auto Plan"):
         st.success(ai_response("Create full timetable", st.session_state.events))
 
 # ---------------- FOOTER ----------------
