@@ -52,21 +52,27 @@ if USE_GOOGLE:
         service.events().insert(calendarId='primary', body=event).execute()
 
 # ---------------- ADD EVENT ----------------
-st.header("➕ Add Event")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    title = st.text_input("Event Title")
-
-with col2:
-    start = st.time_input("Start Time")
-
-end = st.time_input("End Time")
-
 if st.button("🚀 Create Event"):
-    new_event = {"title": title, "start": start, "end": end}
+    if start >= end:
+        st.error("⚠️ End time must be greater than Start time")
+    else:
+        new_event = {
+            "title": title,
+            "start": start,
+            "end": end
+        }
 
+        conflict = False
+        for event in st.session_state.events:
+            if (start < event["end"] and end > event["start"]):
+                conflict = True
+                break
+
+        if conflict:
+            st.error("⚠️ Conflict detected!")
+        else:
+            st.session_state.events.append(new_event)
+            st.success("✅ Event added")
     # -------- GET EVENTS --------
     if USE_GOOGLE:
         try:
@@ -130,19 +136,20 @@ else:
     st.write("No events")
 
 # ---------------- FREE TIME ----------------
-st.header("🕒 Free Time Finder")
-
 if st.button("Find Free Time"):
-    if not USE_GOOGLE:
-        events = sorted(st.session_state.events, key=lambda x: x["start"])
+    events = sorted(st.session_state.events, key=lambda x: x["start"])
 
-        if len(events) < 2:
-            st.write("Not enough events")
-        else:
-            for i in range(len(events)-1):
-                st.write(f"Free: {events[i]['end']} → {events[i+1]['start']}")
+    if len(events) < 2:
+        st.write("Not enough events")
     else:
-        st.info("Free time works best in local mode")
+        found = False
+        for i in range(len(events) - 1):
+            if events[i]["end"] < events[i+1]["start"]:
+                st.write(f"🟢 Free: {events[i]['end']} → {events[i+1]['start']}")
+                found = True
+
+        if not found:
+            st.write("No free time available")
 
 # ---------------- GEMINI AI ----------------
 st.header("🤖 Smart Assistant")
