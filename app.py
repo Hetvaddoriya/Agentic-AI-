@@ -33,18 +33,21 @@ User request:
 Create a helpful response and study plan with proper time slots.
 """
 
-        API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+        API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
         headers = {
             "Authorization": f"Bearer {st.secrets.get('HF_API_KEY', '')}"
         }
 
         response = requests.post(
-            API_URL,
-            headers=headers,
-            json={"inputs": prompt},
-            timeout=20
-        )
-
+    API_URL,
+    headers=headers,
+    json={
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 200
+        }
+    }
+)
         # ✅ Check HTTP error
         if response.status_code != 200:
             return f"❌ API Error {response.status_code}: {response.text}"
