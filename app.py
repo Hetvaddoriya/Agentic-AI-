@@ -19,7 +19,7 @@ USE_GOOGLE = os.getenv("USE_GOOGLE", "false") == "true"
 
 # ---------------- GEMINI SETUP ----------------
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-model = genai.GenerativeModel("gemini-pro")
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 # ---------------- UI HEADER ----------------
 st.markdown("""
