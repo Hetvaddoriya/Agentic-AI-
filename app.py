@@ -52,6 +52,11 @@ if USE_GOOGLE:
         service.events().insert(calendarId='primary', body=event).execute()
 
 # ---------------- ADD EVENT ----------------
+st.header("➕ Add Event")
+
+title = st.text_input("Event Title")
+start = st.time_input("Start Time")
+end = st.time_input("End Time")
 if st.button("🚀 Create Event"):
     if start >= end:
         st.error("⚠️ End time must be greater than Start time")
