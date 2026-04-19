@@ -34,7 +34,7 @@ User request:
 Create a helpful response and study plan with proper time slots.
 """
 
-        API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn""
+        API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
         headers = {
             "Authorization": f"Bearer {st.secrets.get('HF_API_KEY', '')}"
         }
