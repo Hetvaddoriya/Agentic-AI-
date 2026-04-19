@@ -1,12 +1,11 @@
+import streamlit as st
+from datetime import time
 from openai import OpenAI
-import streamlit as st
-
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-import streamlit as st
-from datetime import datetime, time
 
 # ---------------- CONFIG ----------------
 st.set_page_config(page_title="Smart Timetable AI", layout="wide")
+
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # ---------------- UI HEADER ----------------
 st.markdown("""
@@ -16,11 +15,10 @@ st.markdown("""
 """)
 
 # ---------------- LOCAL STORAGE ----------------
-# ---------------- LOCAL STORAGE ----------------
 if "events" not in st.session_state:
     st.session_state.events = []
 
-# ✅ 👉 ADD YOUR FUNCTION HERE
+# ---------------- AI FUNCTION ----------------
 def ai_response(user_input, events):
     try:
         schedule_text = "\n".join(
@@ -36,8 +34,13 @@ User schedule:
 User request:
 {user_input}
 
-Give a clear, helpful answer.
-If user asks for study plan, suggest specific time slots.
+Give a clear and structured answer.
+
+If user asks for a study plan:
+- Suggest exact time slots
+- Break into sessions
+- Add small breaks
+- Be practical and realistic
 """
 
         response = client.chat.completions.create(
@@ -48,22 +51,7 @@ If user asks for study plan, suggest specific time slots.
         return response.choices[0].message.content
 
     except Exception as e:
-        return f"Error: {e}"
-
-# ---------------- SMART AI ----------------
-def smart_response(user_input, events):
-    user_input = user_input.lower()
-
-    if not events:
-        return "📅 You have a free schedule!"
-
-    if "free" in user_input:
-        return "🕒 Click 'Find Free Time' to see available slots."
-
-    if "study" in user_input:
-        return "📚 Best time to study is during long uninterrupted free slots."
-
-    return f"💡 Try scheduling '{user_input}' in your free time."
+        return f"❌ AI Error: {e}"
 
 # ---------------- ADD EVENT ----------------
 st.header("➕ Add Event")
@@ -75,7 +63,6 @@ end = st.time_input("End Time")
 if st.button("🚀 Create Event"):
     if start >= end:
         st.error("⚠️ End time must be greater than Start time")
-
     else:
         new_event = {
             "title": title,
@@ -83,14 +70,18 @@ if st.button("🚀 Create Event"):
             "end": end
         }
 
-        conflict = False
+        conflict_event = None
+
         for event in st.session_state.events:
             if (start < event["end"] and end > event["start"]):
-                conflict = True
+                conflict_event = event
                 break
 
-        if conflict:
-            st.error("⚠️ Conflict detected! Event not added ❌")
+        if conflict_event:
+            st.error(
+                f"⚠️ Conflict with '{conflict_event['title']}' "
+                f"({conflict_event['start']} → {conflict_event['end']}) ❌"
+            )
         else:
             st.session_state.events.append(new_event)
             st.success("✅ Event added successfully")
@@ -112,22 +103,18 @@ if st.button("Find Free Time"):
 
     if not events:
         st.write("🟢 Full day is free!")
-    
     else:
         found = False
 
-        # Before first event
         if events[0]["start"] > time(0, 0):
             st.write(f"🟢 Free: 00:00 → {events[0]['start']}")
             found = True
 
-        # Between events
         for i in range(len(events) - 1):
             if events[i]["end"] < events[i+1]["start"]:
                 st.write(f"🟢 Free: {events[i]['end']} → {events[i+1]['start']}")
                 found = True
 
-        # After last event
         if events[-1]["end"] < time(23, 59):
             st.write(f"🟢 Free: {events[-1]['end']} → 23:59")
             found = True
@@ -138,11 +125,14 @@ if st.button("Find Free Time"):
 # ---------------- AI ASSISTANT ----------------
 st.header("🤖 Smart Assistant")
 
-user_input = st.text_input("Ask something (e.g., when am I free?)")
+user_input = st.text_input("Ask something (e.g., create study plan)")
 
 if st.button("Ask AI"):
-    if user_input:
-        response = ai_response(user_input, st.session_state.events)
+    if not user_input:
+        st.warning("Please enter a question")
+    else:
+        with st.spinner("Thinking..."):
+            response = ai_response(user_input, st.session_state.events)
         st.success(response)
 
 # ---------------- FOOTER ----------------
