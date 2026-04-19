@@ -1,4 +1,4 @@
-requests
+groq
 streamlit
 google-api-python-client
 google-auth
