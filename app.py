@@ -1,27 +1,12 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
 from groq import Groq
-import smtplib
-from email.mime.text import MIMEText
 from streamlit_calendar import calendar
 import pandas as pd
 
 # ---------------- CONFIG ----------------
 st.set_page_config(page_title="Smart Timetable AI", layout="wide")
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-
-# ---------------- STYLE ----------------
-st.markdown("""
-<style>
-.block-container {padding-top: 1rem;}
-.stMetric {
-    background: linear-gradient(135deg,#667eea,#764ba2);
-    padding: 15px;
-    border-radius: 12px;
-    color: white;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # ---------------- HEADER ----------------
 st.markdown("""
@@ -34,108 +19,65 @@ background:linear-gradient(90deg,#667eea,#764ba2);color:white'>
 
 # ---------------- SIDEBAR ----------------
 menu = st.sidebar.radio("📌 Menu",
-    ["Dashboard", "➕ Add Event", "📅 Calendar", "🕒 Free Time", "🔔 Reminders", "🎯 Goals", "🤖 AI"])
+    ["Dashboard", "➕ Add Event", "📅 Calendar", "🕒 Free Time", "🔔 Reminders", "🤖 AI"])
 
 # ---------------- STORAGE ----------------
 if "events" not in st.session_state:
     st.session_state.events = []
 
-if "goals" not in st.session_state:
-    st.session_state.goals = []
-
-# ---------------- AI ----------------
+# ---------------- AI FUNCTION ----------------
 def ai_response(user_input, events):
     try:
-        schedule_text = "\n".join(
-            [f"{e['title']} ({e['start']} - {e['end']})" for e in events]
-        ) if events else "No events"
+        schedule = "\n".join([f"{e['title']} ({e['start']} - {e['end']})" for e in events])
+        prompt = f"{schedule}\n\n{user_input}"
 
         chat = client.chat.completions.create(
-            messages=[{"role": "user", "content": f"{schedule_text}\n\n{user_input}"}],
+            messages=[{"role": "user", "content": prompt}],
             model="llama-3.1-8b-instant"
         )
         return chat.choices[0].message.content
     except Exception as e:
         return str(e)
 
+# ---------------- AI REMINDER SUGGESTION ----------------
+def suggest_reminder(start_time):
+    # Suggest reminder 30 minutes before event
+    return start_time - timedelta(minutes=30)
+
 # ---------------- DASHBOARD ----------------
 if menu == "Dashboard":
-    st.subheader("📊 Smart Dashboard")
+    st.subheader("📊 Dashboard")
 
     events = st.session_state.events
-
     total = len(events)
-    upcoming = sum(1 for e in events if e["start"] > datetime.now())
 
-    total_hours = sum(
-        (e["end"] - e["start"]).total_seconds() / 3600
-        for e in events
-    )
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("📅 Total Events", total)
-    col2.metric("⏳ Upcoming", upcoming)
-    col3.metric("🔥 Busy Hours", round(total_hours, 2))
-
-    st.progress(min(total_hours / 24, 1.0))
-    st.write(f"🕒 Day Utilization: {round(total_hours, 2)} hrs")
-
-    # Chart
-    if events:
-        df = pd.DataFrame(events)
-        df["date"] = df["start"].dt.date
-        chart_data = df.groupby("date").size()
-
-        st.markdown("### 📈 Events per Day")
-        st.bar_chart(chart_data)
-
-    else:
-        st.info("No events")
-
-    # Goals summary
-    if st.session_state.goals:
-        st.markdown("### 🎯 Goals Progress")
-        for goal in st.session_state.goals:
-            progress = total_hours
-            percent = min(progress / goal["target"], 1.0)
-
-            st.progress(percent)
-            st.write(f"{goal['title']} → {round(percent*100)}%")
+    st.metric("📅 Total Events", total)
 
 # ---------------- ADD EVENT ----------------
 elif menu == "➕ Add Event":
-    st.subheader("➕ Create Event")
+    st.subheader("➕ Add Event")
 
-    col1, col2 = st.columns(2)
+    title = st.text_input("Event Title")
+    start = st.datetime_input("Start Time")
+    end = st.datetime_input("End Time")
 
-    with col1:
-        title = st.text_input("Title")
-        start = st.datetime_input("Start")
+    auto_reminder = st.checkbox("🤖 Auto Suggest Reminder")
 
-    with col2:
-        end = st.datetime_input("End")
-        reminder = st.datetime_input("Reminder")
+    if auto_reminder:
+        reminder = suggest_reminder(start)
+        st.info(f"Suggested Reminder: {reminder}")
+    else:
+        reminder = st.datetime_input("⏰ Set Reminder")
 
-    email = st.text_input("Email")
+    if st.button("Add Event"):
+        st.session_state.events.append({
+            "title": title,
+            "start": start,
+            "end": end,
+            "reminder": reminder
+        })
+        st.success("Event added")
 
-    if st.button("🚀 Add Event"):
-        if start >= end:
-            st.error("End time must be greater than start time")
-        else:
-            st.session_state.events.append({
-                "title": title,
-                "start": start,
-                "end": end,
-                "reminder": reminder,
-                "email": email
-            })
-            st.success("Event added")
-reminder_enabled = st.checkbox("Enable Reminder")
-
-if reminder_enabled:
-    reminder = st.datetime_input("⏰ Reminder Time")
-else:
-    reminder = None
 # ---------------- CALENDAR ----------------
 elif menu == "📅 Calendar":
     st.subheader("📅 Calendar")
@@ -157,86 +99,53 @@ elif menu == "🕒 Free Time":
 
     if st.button("Find Free Time"):
         events = sorted(st.session_state.events, key=lambda x: x["start"])
-        free_slots = []
-
         for i in range(len(events)-1):
             if events[i]["end"] < events[i+1]["start"]:
-                free_slots.append((events[i]["end"], events[i+1]["start"]))
-
-        if free_slots:
-            best = max(free_slots, key=lambda x: x[1]-x[0])
-
-            for s,e in free_slots:
-                st.info(f"{s.strftime('%H:%M')} → {e.strftime('%H:%M')}")
-
-            st.success(f"⭐ Best Slot: {best[0]} → {best[1]}")
-        else:
-            st.warning("No free time")
+                st.success(f"{events[i]['end']} → {events[i+1]['start']}")
 
 # ---------------- REMINDERS ----------------
 elif menu == "🔔 Reminders":
-    st.subheader("🔔 Alerts & Reminders")
+    st.subheader("🔔 Alerts")
 
     now = datetime.now()
-    events = st.session_state.events
 
-    if not events:
-        st.info("No reminders set")
-    else:
-        for e in events:
+    for e in st.session_state.events:
+        if e["reminder"]:
 
-            # ---- SHOW UPCOMING ----
-            if e["reminder"]:
-                st.info(
-                    f"📌 {e['title']} → Reminder at {e['reminder'].strftime('%d %b %H:%M')}"
-                )
+            # Show upcoming reminders
+            st.info(f"📌 {e['title']} → {e['reminder']}")
 
-            # ---- TRIGGER ALERT ----
-            if e["reminder"] and now >= e["reminder"] and now < e["start"]:
-                st.warning(f"⏰ Reminder: {e['title']} starting soon!")
+            # Trigger alert
+            if now >= e["reminder"] and now < e["start"]:
+
+                # 🔥 MOBILE-LIKE POPUP
+                st.toast(f"⏰ {e['title']} starting soon!")
 
                 # 🔊 SOUND
                 st.audio("https://www.soundjay.com/buttons/beep-07.wav")
-# ---------------- GOALS ----------------
-elif menu == "🎯 Goals":
-    st.subheader("🎯 Goal Tracker")
 
-    goal_title = st.text_input("Goal Title")
-    goal_target = st.number_input("Target Hours", min_value=1)
-
-    if st.button("➕ Add Goal"):
-        st.session_state.goals.append({
-            "title": goal_title,
-            "target": goal_target
-        })
-        st.success("Goal added")
-
-    total_hours = sum(
-        (e["end"] - e["start"]).total_seconds() / 3600
-        for e in st.session_state.events
-    )
-
-    for goal in st.session_state.goals:
-        st.markdown(f"### {goal['title']}")
-        percent = min(total_hours / goal["target"], 1.0)
-
-        st.progress(percent)
-        st.write(f"{round(total_hours,1)} / {goal['target']} hrs")
-
-        if percent >= 1:
-            st.success("✅ Goal Achieved!")
+                # 🖥️ DESKTOP NOTIFICATION
+                st.markdown(f"""
+<script>
+if (Notification.permission !== "granted") {{
+    Notification.requestPermission();
+}} else {{
+    new Notification("Reminder", {{
+        body: "{e['title']} is starting soon!",
+        icon: "https://cdn-icons-png.flaticon.com/512/2921/2921222.png"
+    }});
+}}
+</script>
+""", unsafe_allow_html=True)
 
 # ---------------- AI ----------------
 elif menu == "🤖 AI":
-    st.subheader("🤖 Smart Assistant")
+    st.subheader("🤖 AI Assistant")
 
     user_input = st.text_input("Ask something")
 
     if st.button("Ask AI"):
         st.success(ai_response(user_input, st.session_state.events))
-
-    if st.button("⚡ Auto Plan"):
-        st.success(ai_response("Create full timetable", st.session_state.events))
 
 # ---------------- FOOTER ----------------
 st.markdown("---")
