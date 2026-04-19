@@ -1,11 +1,10 @@
 import streamlit as st
 from datetime import time
-from openai import OpenAI
+import requests
 
 # ---------------- CONFIG ----------------
 st.set_page_config(page_title="Smart Timetable AI", layout="wide")
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # ---------------- UI HEADER ----------------
 st.markdown("""
@@ -26,32 +25,27 @@ def ai_response(user_input, events):
         ) if events else "No events"
 
         prompt = f"""
-You are a smart timetable assistant.
-
 User schedule:
 {schedule_text}
 
 User request:
 {user_input}
 
-Give a clear and structured answer.
-
-If user asks for a study plan:
-- Suggest exact time slots
-- Break into sessions
-- Add small breaks
-- Be practical and realistic
+Create a helpful response and study plan with time slots.
 """
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
-        )
+        API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-large"
+        headers = {
+            "Authorization": f"Bearer {st.secrets['HF_API_KEY']}"
+        }
 
-        return response.choices[0].message.content
+        response = requests.post(API_URL, headers=headers, json={"inputs": prompt})
+        result = response.json()
+
+        return result[0]["generated_text"]
 
     except Exception as e:
-        return f"❌ AI Error: {e}"
+        return f"❌ AI Error: {e}""
 
 # ---------------- ADD EVENT ----------------
 st.header("➕ Add Event")
