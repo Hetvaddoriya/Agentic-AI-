@@ -46,7 +46,8 @@ If it's a study plan, include time slots.
         return chat.choices[0].message.content
 
     except Exception as e:
-        return f"❌ AI Error: {e}"# ---------------- ADD EVENT ----------------
+        return f"❌ AI Error: {e}"
+        # ---------------- ADD EVENT ----------------
 st.header("➕ Add Event")
 
 title = st.text_input("Event Title")
@@ -63,8 +64,14 @@ if st.button("🚀 Create Event"):
             "end": end
         }
 
-        conflict_event = None
+        # ✅ DUPLICATE CHECK
+        for event in st.session_state.events:
+            if start == event["start"] and end == event["end"]:
+                st.warning("⚠️ This exact event already exists")
+                st.stop()
 
+        # ✅ CONFLICT CHECK
+        conflict_event = None
         for event in st.session_state.events:
             if (start < event["end"] and end > event["start"]):
                 conflict_event = event
@@ -78,7 +85,6 @@ if st.button("🚀 Create Event"):
         else:
             st.session_state.events.append(new_event)
             st.success("✅ Event added successfully")
-
 # ---------------- VIEW EVENTS ----------------
 st.header("📅 Schedule")
 
