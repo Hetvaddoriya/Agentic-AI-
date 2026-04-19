@@ -163,8 +163,10 @@ if st.button("Ask AI"):
     if not st.session_state.events:
         st.warning("Add some events first")
     else:
-        response = ai_response("Create a full study timetable from my free time", st.session_state.events)
+        response = ai_response(
+            "Create a full study timetable from my free time",
+            st.session_state.events
+        )
         st.success(response)
-
 # ---------------- FOOTER ----------------
 st.markdown("---")
